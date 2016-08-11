@@ -5,6 +5,7 @@ from pyspark.streaming import StreamingContext
 import twitter
 import dateutil.parser
 import json
+from pyspark.streaming.kafka import KafkaUtils
 
 # Connecting Streaming Twitter with Streaming Spark via Queue
 class Tweet(dict):
@@ -39,6 +40,16 @@ def get_next_tweet(twitter_stream):
         tweet_parsed = Tweet(tweet_in)
     return json.dumps(tweet_parsed)
 
+def stream(ssc):
+
+    zkQuorum = "localhost:2181"
+    topic = "topic1"
+    tweets = KafkaUtils.createStream(ssc, zkQuorum, "spark-streaming-consumer", {topic: 1})
+    kstream = KafkaUtils.createDirectStream(ssc, topics = ['topic1'], kafkaParams = {"metadata.broker.list":"localhost:9092"})
+
+    tweets = tweets.map(lambda x: x[1].encode("ascii","ignore"))
+    return tweets
+
 def process_rdd_queue(twitter_stream):
         # Create the queue through which RDDs can be pushed to
         # a QueueInputDStream
@@ -52,9 +63,15 @@ if __name__ == "__main__":
     sc = SparkContext(appName="PythonStreamingQueueStream")
     ssc = StreamingContext(sc, 10)
     # Instantiate the twitter_stream
-    twitter_stream = connect_twitter()
+    #twitter_stream = connect_twitter()
     # Get RDD queue of the streams json or parsed
-    process_rdd_queue(twitter_stream)
+    #process_rdd_queue(twitter_stream)
+    zkQuorum = "localhost:2181"
+    topic = "topic1"
+    tweets = KafkaUtils.createStream(ssc, zkQuorum, "PythonStreamingQueueStream", {topic: 1})
+    #tweets = stream(ssc)
+    #process_rdd_queue(twitter_stream)
+    tweets.pprint()	
     ssc.start()
     time.sleep(100)
     ssc.stop(stopSparkContext=True, stopGraceFully=True)
